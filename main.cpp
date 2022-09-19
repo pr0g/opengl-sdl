@@ -6,12 +6,16 @@
 
 #include <SDL_opengl.h>
 
+#include <as-camera-input/as-camera-input.hpp>
+#include <as/as-view.hpp>
+
 const char* const g_vertex_shader_source =
   R"(#version 330 core
 layout (location = 0) in vec3 aPos;
+uniform mat4 mvp;
 void main()
 {
-  gl_Position = vec4(aPos, 1.0);
+  gl_Position = mvp * vec4(aPos, 1.0);
 })";
 const char* const g_fragment_shader_source =
   R"(#version 330 core
@@ -20,6 +24,14 @@ void main()
 {
   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
 })";
+
+namespace asc
+{
+Handedness handedness()
+{
+  return Handedness::Right;
+}
+} // namespace asc
 
 int main(int argc, char** argv)
 {
@@ -125,6 +137,12 @@ int main(int argc, char** argv)
 
   glViewport(0, 0, width, height);
 
+  asc::Camera camera;
+  camera.pivot = as::vec3(0.0f, 0.0f, 2.0f);
+
+  const as::mat4 perspective_projection = as::perspective_gl_rh(
+    as::radians(60.0f), float(width) / float(height), 0.01f, 100.0f);
+
   for (bool quit = false; !quit;) {
     for (SDL_Event current_event; SDL_PollEvent(&current_event) != 0;) {
       if (current_event.type == SDL_QUIT) {
@@ -137,6 +155,28 @@ int main(int argc, char** argv)
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(shader_program);
+
+    const as::mat4 view = as::mat4_from_affine(camera.view());
+    const as::mat4 view_projection = perspective_projection * view;
+
+    const as::mat4 translation_left =
+      as::mat4_from_vec3(as::vec3::axis_x(-0.75f));
+    const as::mat4 translation_right =
+      as::mat4_from_vec3(as::vec3::axis_x(0.75f));
+
+    const uint32_t mvp_loc = glGetUniformLocation(shader_program, "mvp");
+    const as::mat4 model_view_projection_l = view_projection * translation_left;
+    glUniformMatrix4fv(
+      mvp_loc, 1, GL_FALSE, as::mat_const_data(model_view_projection_l));
+
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    const as::mat4 model_view_projection_r =
+      view_projection * translation_right;
+    glUniformMatrix4fv(
+      mvp_loc, 1, GL_FALSE, as::mat_const_data(model_view_projection_r));
+
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
