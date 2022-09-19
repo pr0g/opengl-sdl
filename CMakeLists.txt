@@ -37,3 +37,13 @@ target_compile_definitions(
           $<$<BOOL:${AS_PRECISION_DOUBLE}>:AS_PRECISION_DOUBLE>
           $<$<BOOL:${AS_COL_MAJOR}>:AS_COL_MAJOR>
           $<$<BOOL:${AS_ROW_MAJOR}>:AS_ROW_MAJOR>)
+
+if(WIN32)
+  # copy the SDL2.dll to the same folder as the executable
+  add_custom_command(
+    TARGET ${PROJECT_NAME}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL2::SDL2>
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    VERBATIM)
+endif()

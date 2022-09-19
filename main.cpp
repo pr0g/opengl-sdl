@@ -60,6 +60,11 @@ int main(int argc, char** argv)
 
   const SDL_GLContext context = SDL_GL_CreateContext(window);
   const int version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
+  if (version == 0) {
+    printf("Failed to initialize OpenGL context\n");
+    return 1;
+  }
+
   printf(
     "OpenGL version %d.%d\n", GLAD_VERSION_MAJOR(version),
     GLAD_VERSION_MINOR(version));
