@@ -20,9 +20,10 @@ void main()
 const char* const g_fragment_shader_source =
   R"(#version 330 core
 out vec4 FragColor;
+uniform vec4 color;
 void main()
 {
-  FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+  FragColor = color;
 })";
 
 namespace asc
@@ -143,6 +144,9 @@ int main(int argc, char** argv)
   const as::mat4 perspective_projection = as::perspective_gl_rh(
     as::radians(60.0f), float(width) / float(height), 0.01f, 100.0f);
 
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
+
   for (bool quit = false; !quit;) {
     for (SDL_Event current_event; SDL_PollEvent(&current_event) != 0;) {
       if (current_event.type == SDL_QUIT) {
@@ -152,7 +156,7 @@ int main(int argc, char** argv)
     }
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shader_program);
 
@@ -160,14 +164,18 @@ int main(int argc, char** argv)
     const as::mat4 view_projection = perspective_projection * view;
 
     const as::mat4 translation_left =
-      as::mat4_from_vec3(as::vec3::axis_x(-0.75f));
+      as::mat4_from_vec3(as::vec3(-0.25f, 0.25f, -1.0f));
     const as::mat4 translation_right =
-      as::mat4_from_vec3(as::vec3::axis_x(0.75f));
+      as::mat4_from_vec3(as::vec3(0.25f, -0.25f, -3.0f));
 
     const uint32_t mvp_loc = glGetUniformLocation(shader_program, "mvp");
     const as::mat4 model_view_projection_l = view_projection * translation_left;
     glUniformMatrix4fv(
       mvp_loc, 1, GL_FALSE, as::mat_const_data(model_view_projection_l));
+
+    const uint32_t color_loc = glGetUniformLocation(shader_program, "color");
+    const as::vec4 color_l = as::vec4(1.0f, 0.5f, 0.2f, 1.0f);
+    glUniform4fv(color_loc, 1, as::vec_const_data(color_l));
 
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -176,6 +184,9 @@ int main(int argc, char** argv)
       view_projection * translation_right;
     glUniformMatrix4fv(
       mvp_loc, 1, GL_FALSE, as::mat_const_data(model_view_projection_r));
+
+    const as::vec4 color_r = as::vec4(1.0f, 0.2f, 0.1f, 1.0f);
+    glUniform4fv(color_loc, 1, as::vec_const_data(color_r));
 
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
