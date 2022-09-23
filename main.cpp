@@ -52,6 +52,36 @@ void main()
     FragColor = texture(screenTexture, TexCoords);
 })";
 
+const char* const g_screen_depth_fragment_shader_source =
+  R"(#version 330 core
+out vec4 FragColor;
+
+in vec2 TexCoords;
+
+uniform sampler2D screenTexture;
+
+float LinearizeDepth(in vec2 uv)
+{
+    float zNear = 0.01;
+    float zFar  = 100;
+    float depth = texture(screenTexture, uv).x;
+    return (2.0 * zNear) / (zFar + zNear - depth * (zFar - zNear));
+}
+
+void main()
+{
+    float c = LinearizeDepth(TexCoords);
+    FragColor = vec4(c, c, c, 1.0);
+})";
+
+enum class render_mode_e
+{
+  normal,
+  depth
+};
+
+render_mode_e g_render_mode = render_mode_e::depth;
+
 namespace asc
 {
 
@@ -108,6 +138,18 @@ uint32_t create_shader(
   return shader_program;
 }
 
+void draw_quad(
+  const as::mat4& view_projection, const as::mat4& model, const as::vec4& color,
+  const uint32_t mvp_loc, const uint32_t color_loc, const uint32_t vao)
+{
+  const as::mat4 model_view_projection = view_projection * model;
+  glUniformMatrix4fv(
+    mvp_loc, 1, GL_FALSE, as::mat_const_data(model_view_projection));
+  glUniform4fv(color_loc, 1, as::vec_const_data(color));
+  glBindVertexArray(vao);
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
 int main(int argc, char** argv)
 {
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -147,6 +189,8 @@ int main(int argc, char** argv)
     create_shader(g_vertex_shader_source, g_fragment_shader_source);
   const uint32_t screen_shader_program = create_shader(
     g_screen_vertex_shader_source, g_screen_fragment_shader_source);
+  const uint32_t depth_screen_shader_program = create_shader(
+    g_screen_vertex_shader_source, g_screen_depth_fragment_shader_source);
 
   float vertices[] = {
     0.5f,  0.5f,  0.0f, // top right
@@ -206,33 +250,30 @@ int main(int argc, char** argv)
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
-  uint32_t framebuffer;
-  glGenFramebuffers(1, &framebuffer);
-  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
   uint32_t texture_colorbuffer;
   glGenTextures(1, &texture_colorbuffer);
   glBindTexture(GL_TEXTURE_2D, texture_colorbuffer);
-  glTexImage2D(
-    GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, width, height);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  uint32_t texture_depth_stencil_buffer;
+  glGenTextures(1, &texture_depth_stencil_buffer);
+  glBindTexture(GL_TEXTURE_2D, texture_depth_stencil_buffer);
+  glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH32F_STENCIL8, width, height);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  uint32_t framebuffer;
+  glGenFramebuffers(1, &framebuffer);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
   glFramebufferTexture2D(
     GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_colorbuffer,
     0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-
-  uint32_t rbo;
-  glGenRenderbuffers(1, &rbo);
-  glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-  glFramebufferRenderbuffer(
-    GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+  glFramebufferTexture2D(
+    GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D,
+    texture_depth_stencil_buffer, 0);
 
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-    std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!"
-              << std::endl;
+    std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n";
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -253,6 +294,16 @@ int main(int argc, char** argv)
         quit = true;
         break;
       }
+      if (current_event.type == SDL_KEYDOWN) {
+        const auto* keyboard_event = (SDL_KeyboardEvent*)&current_event;
+        if (keyboard_event->keysym.scancode == SDL_SCANCODE_R) {
+          if (g_render_mode == render_mode_e::depth) {
+            g_render_mode = render_mode_e::normal;
+          } else {
+            g_render_mode = render_mode_e::depth;
+          }
+        }
+      }
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -266,34 +317,22 @@ int main(int argc, char** argv)
     const as::mat4 view = as::mat4_from_affine(camera.view());
     const as::mat4 view_projection = perspective_projection * view;
 
-    const as::mat4 translation_left =
-      as::mat4_from_vec3(as::vec3(-0.25f, 0.25f, -1.0f));
-    const as::mat4 translation_right =
-      as::mat4_from_vec3(as::vec3(0.25f, -0.25f, -3.0f));
-
     const uint32_t mvp_loc = glGetUniformLocation(main_shader_program, "mvp");
-    const as::mat4 model_view_projection_l = view_projection * translation_left;
-    glUniformMatrix4fv(
-      mvp_loc, 1, GL_FALSE, as::mat_const_data(model_view_projection_l));
-
     const uint32_t color_loc =
       glGetUniformLocation(main_shader_program, "color");
-    const as::vec4 color_l = as::vec4(1.0f, 0.5f, 0.2f, 1.0f);
-    glUniform4fv(color_loc, 1, as::vec_const_data(color_l));
 
-    glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-    const as::mat4 model_view_projection_r =
-      view_projection * translation_right;
-    glUniformMatrix4fv(
-      mvp_loc, 1, GL_FALSE, as::mat_const_data(model_view_projection_r));
-
-    const as::vec4 color_r = as::vec4(1.0f, 0.2f, 0.1f, 1.0f);
-    glUniform4fv(color_loc, 1, as::vec_const_data(color_r));
-
-    glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    draw_quad(
+      view_projection, as::mat4_from_vec3(as::vec3(-0.25f, 0.25f, -1.0f)),
+      as::vec4(1.0f, 0.5f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
+    draw_quad(
+      view_projection, as::mat4_from_vec3(as::vec3(0.25f, -0.25f, -3.0f)),
+      as::vec4(1.0f, 0.0f, 0.0f, 1.0f), mvp_loc, color_loc, vao);
+    draw_quad(
+      view_projection, as::mat4_from_vec3(as::vec3(-0.25f, 5.5f, -20.0f)),
+      as::vec4(0.1f, 0.2f, 0.6f, 1.0f), mvp_loc, color_loc, vao);
+    draw_quad(
+      view_projection, as::mat4_from_vec3(as::vec3(-30.0f, 0.0f, -80.0f)),
+      as::vec4(0.1f, 0.8f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDisable(GL_DEPTH_TEST);
@@ -301,10 +340,20 @@ int main(int argc, char** argv)
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(screen_shader_program);
+    if (g_render_mode == render_mode_e::normal) {
+      glUseProgram(screen_shader_program);
+    } else {
+      glUseProgram(depth_screen_shader_program);
+    }
 
     glBindVertexArray(quad_vao);
-    glBindTexture(GL_TEXTURE_2D, texture_colorbuffer);
+
+    if (g_render_mode == render_mode_e::normal) {
+      glBindTexture(GL_TEXTURE_2D, texture_colorbuffer);
+    } else {
+      glBindTexture(GL_TEXTURE_2D, texture_depth_stencil_buffer);
+    }
+
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
     SDL_GL_SwapWindow(window);
@@ -317,6 +366,10 @@ int main(int argc, char** argv)
   glDeleteBuffers(1, &ebo);
   glDeleteProgram(main_shader_program);
   glDeleteProgram(screen_shader_program);
+  glDeleteProgram(depth_screen_shader_program);
+  glDeleteTextures(1, &texture_colorbuffer);
+  glDeleteTextures(1, &texture_depth_stencil_buffer);
+  glDeleteFramebuffers(1, &framebuffer);
 
   SDL_GL_DeleteContext(context);
   SDL_DestroyWindow(window);
