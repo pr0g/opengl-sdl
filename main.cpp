@@ -303,6 +303,12 @@ int main(int argc, char** argv)
             g_render_mode = render_mode_e::depth;
           }
         }
+        if (keyboard_event->keysym.scancode == SDL_SCANCODE_S) {
+          camera.pivot += as::vec3::axis_z(1.0f);
+        }
+        if (keyboard_event->keysym.scancode == SDL_SCANCODE_W) {
+          camera.pivot -= as::vec3::axis_z(1.0f);
+        }
       }
     }
 
