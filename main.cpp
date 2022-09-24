@@ -60,18 +60,24 @@ in vec2 TexCoords;
 
 uniform sampler2D screenTexture;
 
+// return depth value in range near to far
+// ref: https://learnopengl.com/Advanced-OpenGL/Depth-testing
 float LinearizeDepth(in vec2 uv)
 {
-    float zNear = 0.01;
-    float zFar  = 100;
+    float near = 0.01;
+    float far  = 100.0;
     float depth = texture(screenTexture, uv).x;
-    return (2.0 * zNear) / (zFar + zNear - depth * (zFar - zNear));
+    // map from [0,1] to [-1,1]
+    float z_n = 2.0 * depth - 1.0;
+    // inverse of perspective projection matrix transformation
+    return 2.0 * near * far / (far + near - z_n * (far - near));
 }
 
 void main()
 {
     float c = LinearizeDepth(TexCoords);
-    FragColor = vec4(c, c, c, 1.0);
+    // convert to [0,1] range by dividing by far plane
+    FragColor = vec4(vec3(c)/100.0, 1.0); // 100.0 is far
 })";
 
 enum class render_mode_e
