@@ -67,17 +67,15 @@ float LinearizeDepth(in vec2 uv)
     float near = 0.01;
     float far  = 100.0;
     float depth = texture(screenTexture, uv).x;
-    // map from [0,1] to [-1,1]
-    float z_n = 2.0 * depth - 1.0;
     // inverse of perspective projection matrix transformation
-    return 2.0 * near * far / (far + near - z_n * (far - near));
+    return near * far / (far + depth * (near - far));
 }
 
 void main()
 {
     float c = LinearizeDepth(TexCoords);
     // convert to [0,1] range by dividing by far plane
-    FragColor = vec4(vec3(c)/100.0, 1.0); // 100.0 is far
+    FragColor = vec4(vec3(c - 0.01)/(100.0 - 0.01), 1.0); // 0.01 is near, 100.0 is far
 })";
 
 enum class render_mode_e
@@ -165,7 +163,7 @@ int main(int argc, char** argv)
 
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
   const int width = 1024;
@@ -190,6 +188,8 @@ int main(int argc, char** argv)
   printf(
     "OpenGL version %d.%d\n", GLAD_VERSION_MAJOR(version),
     GLAD_VERSION_MINOR(version));
+
+  glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
   const uint32_t main_shader_program =
     create_shader(g_vertex_shader_source, g_fragment_shader_source);
@@ -289,8 +289,8 @@ int main(int argc, char** argv)
   asc::Camera camera;
   camera.pivot = as::vec3(0.0f, 0.0f, 2.0f);
 
-  const as::mat4 perspective_projection = as::perspective_gl_rh(
-    as::radians(60.0f), float(width) / float(height), 0.01f, 100.0f);
+  const as::mat4 perspective_projection = as::normalize_unit_range(as::perspective_gl_rh(
+    as::radians(60.0f), float(width) / float(height), 0.01f, 100.0f));
 
   glDepthFunc(GL_LESS);
 
