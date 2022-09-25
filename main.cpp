@@ -148,7 +148,7 @@ void draw_quad(
   const as::mat4& view_projection, const as::mat4& model, const as::vec4& color,
   const uint32_t mvp_loc, const uint32_t color_loc, const uint32_t vao)
 {
-  const as::mat4 model_view_projection = view_projection * model;
+  const as::mat4 model_view_projection = as::mat_mul(model, view_projection);
   glUniformMatrix4fv(
     mvp_loc, 1, GL_FALSE, as::mat_const_data(model_view_projection));
   glUniform4fv(color_loc, 1, as::vec_const_data(color));
@@ -327,7 +327,7 @@ int main(int argc, char** argv)
     glUseProgram(main_shader_program);
 
     const as::mat4 view = as::mat4_from_affine(camera.view());
-    const as::mat4 view_projection = perspective_projection * view;
+    const as::mat4 view_projection = as::mat_mul(view, perspective_projection);
 
     const uint32_t mvp_loc = glGetUniformLocation(main_shader_program, "mvp");
     const uint32_t color_loc =
