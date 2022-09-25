@@ -13,7 +13,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   as
   GIT_REPOSITORY https://github.com/pr0g/as.git
-  GIT_TAG 4bd7768323edfc7d819874439d40ce21a3ea6388)
+  GIT_TAG 7de421efc5f6edcdf325be91db7eafb897558f88)
 FetchContent_Declare(
   as-camera-input
   GIT_REPOSITORY https://github.com/pr0g/as-camera-input.git
