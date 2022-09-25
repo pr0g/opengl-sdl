@@ -64,18 +64,19 @@ uniform sampler2D screenTexture;
 // ref: https://learnopengl.com/Advanced-OpenGL/Depth-testing
 float LinearizeDepth(in vec2 uv)
 {
-    float near = 0.01;
+    float near = 5.0;
     float far  = 100.0;
     float depth = texture(screenTexture, uv).x;
     // inverse of perspective projection matrix transformation
-    return near * far / (far + depth * (near - far));
+    return near * far / (far - depth * (far - near));
 }
 
 void main()
 {
     float c = LinearizeDepth(TexCoords);
     // convert to [0,1] range by dividing by far plane
-    FragColor = vec4(vec3(c - 0.01)/(100.0 - 0.01), 1.0); // 0.01 is near, 100.0 is far
+    vec3 range = vec3(c - 5.0)/(100.0 - 5.0);
+    FragColor = vec4(range, 1.0); // 5.0 is near, 100.0 is far
 })";
 
 enum class render_mode_e
@@ -287,12 +288,11 @@ int main(int argc, char** argv)
   glViewport(0, 0, width, height);
 
   asc::Camera camera;
-  camera.pivot = as::vec3(0.0f, 0.0f, 2.0f);
+  camera.pivot = as::vec3(0.0f, 0.0f, 4.0f);
 
-  const as::mat4 perspective_projection = as::normalize_unit_range(as::perspective_gl_rh(
-    as::radians(60.0f), float(width) / float(height), 0.01f, 100.0f));
-
-  glDepthFunc(GL_LESS);
+  const as::mat4 perspective_projection =
+    as::reverse_z(as::normalize_unit_range(as::perspective_gl_rh(
+      as::radians(60.0f), float(width) / float(height), 5.0f, 100.0f)));
 
   for (bool quit = false; !quit;) {
     for (SDL_Event current_event; SDL_PollEvent(&current_event) != 0;) {
@@ -310,19 +310,22 @@ int main(int argc, char** argv)
           }
         }
         if (keyboard_event->keysym.scancode == SDL_SCANCODE_S) {
-          camera.pivot += as::vec3::axis_z(1.0f);
+          camera.pivot += as::vec3::axis_z(0.1f);
         }
         if (keyboard_event->keysym.scancode == SDL_SCANCODE_W) {
-          camera.pivot -= as::vec3::axis_z(1.0f);
+          camera.pivot -= as::vec3::axis_z(0.1f);
         }
       }
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-    glEnable(GL_DEPTH_TEST);
 
+    glClearDepth(0.0f);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_GREATER);
 
     glUseProgram(main_shader_program);
 
@@ -347,6 +350,8 @@ int main(int argc, char** argv)
       as::vec4(0.1f, 0.8f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glDepthFunc(GL_LESS);
     glDisable(GL_DEPTH_TEST);
 
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
