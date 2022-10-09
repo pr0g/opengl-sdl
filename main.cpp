@@ -77,7 +77,8 @@ void main()
 {
     float c = LinearizeDepth(TexCoords);
     // convert to [0,1] range by dividing by far plane
-    FragColor = vec4(vec3(c)/100.0, 1.0); // 100.0 is far
+    vec3 range = vec3(c - 0.01)/(100.0 - 0.01);
+    FragColor = vec4(range, 1.0); // 0.01 is near, 100.0 is far
 })";
 
 enum class render_mode_e
