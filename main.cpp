@@ -64,7 +64,7 @@ uniform sampler2D screenTexture;
 // ref: https://learnopengl.com/Advanced-OpenGL/Depth-testing
 float LinearizeDepth(in vec2 uv)
 {
-    float near = 0.01;
+    float near = 5.0;
     float far  = 100.0;
     float depth = texture(screenTexture, uv).x;
     // map from [0,1] to [-1,1]
@@ -77,8 +77,8 @@ void main()
 {
     float c = LinearizeDepth(TexCoords);
     // convert to [0,1] range by dividing by far plane
-    vec3 range = vec3(c - 0.01)/(100.0 - 0.01);
-    FragColor = vec4(range, 1.0); // 0.01 is near, 100.0 is far
+    vec3 range = vec3(c - 5.0)/(100.0 - 5.0);
+    FragColor = vec4(range, 1.0); // 5.0 is near, 100.0 is far
 })";
 
 enum class render_mode_e
@@ -288,10 +288,10 @@ int main(int argc, char** argv)
   glViewport(0, 0, width, height);
 
   asc::Camera camera;
-  camera.pivot = as::vec3(0.0f, 0.0f, 2.0f);
+  camera.pivot = as::vec3(0.0f, 0.0f, 4.0f);
 
   const as::mat4 perspective_projection = as::perspective_gl_rh(
-    as::radians(60.0f), float(width) / float(height), 0.01f, 100.0f);
+    as::radians(60.0f), float(width) / float(height), 5.0f, 100.0f);
 
   glDepthFunc(GL_LESS);
 
@@ -311,10 +311,10 @@ int main(int argc, char** argv)
           }
         }
         if (keyboard_event->keysym.scancode == SDL_SCANCODE_S) {
-          camera.pivot += as::vec3::axis_z(1.0f);
+          camera.pivot += as::vec3::axis_z(0.1f);
         }
         if (keyboard_event->keysym.scancode == SDL_SCANCODE_W) {
-          camera.pivot -= as::vec3::axis_z(1.0f);
+          camera.pivot -= as::vec3::axis_z(0.1f);
         }
       }
     }
