@@ -13,13 +13,13 @@ FetchContent_Declare(
 FetchContent_Declare(
   as
   GIT_REPOSITORY https://github.com/pr0g/as.git
-  GIT_TAG 7de421efc5f6edcdf325be91db7eafb897558f88)
+  GIT_TAG 82c15519e8d9701a04359495639322dd49c03c8c)
 FetchContent_Declare(
-  as-camera-input
-  GIT_REPOSITORY https://github.com/pr0g/as-camera-input.git
-  GIT_TAG d47bd06a9dbcfa3f5cb92cdab146d599f0e0b978)
+  as-camera-input-sdl
+  GIT_REPOSITORY https://github.com/pr0g/as-camera-input-sdl.git
+  GIT_TAG a2c53f7ef12cea081b632d559477f1549055a080)
 
-FetchContent_MakeAvailable(glad as as-camera-input)
+FetchContent_MakeAvailable(glad as as-camera-input-sdl)
 
 list(APPEND CMAKE_MODULE_PATH ${glad_SOURCE_DIR})
 
@@ -29,7 +29,7 @@ add_executable(${PROJECT_NAME})
 target_sources(${PROJECT_NAME} PRIVATE main.cpp)
 target_link_libraries(
   ${PROJECT_NAME} PRIVATE SDL2::SDL2 SDL2::SDL2main glad_gl_core_46 as
-                          as-camera-input)
+                          as-camera-input-sdl)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_compile_definitions(
   ${PROJECT_NAME}

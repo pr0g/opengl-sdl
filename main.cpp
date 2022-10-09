@@ -6,8 +6,10 @@
 
 #include <SDL_opengl.h>
 
-#include <as-camera-input/as-camera-input.hpp>
+#include <as-camera-input-sdl/as-camera-input-sdl.hpp>
 #include <as/as-view.hpp>
+
+#include <chrono>
 
 const char* const g_vertex_shader_source =
   R"(#version 330 core
@@ -78,6 +80,8 @@ void main()
     vec3 range = vec3(c - 5.0)/(100.0 - 5.0);
     FragColor = vec4(range, 1.0); // 5.0 is near, 100.0 is far
 })";
+
+using fp_seconds = std::chrono::duration<float, std::chrono::seconds::period>;
 
 enum class render_mode_e
 {
@@ -289,17 +293,27 @@ int main(int argc, char** argv)
 
   asc::Camera camera;
   camera.pivot = as::vec3(0.0f, 0.0f, 4.0f);
+  asc::Camera target_camera = camera;
+
+  asci::CameraSystem camera_system;
+  asci::TranslateCameraInput translate_camera{
+    asci::lookTranslation, asci::translatePivot};
+  asci::RotateCameraInput rotate_camera{asci::MouseButton::Right};
+  camera_system.cameras_.addCamera(&translate_camera);
+  camera_system.cameras_.addCamera(&rotate_camera);
 
   const as::mat4 perspective_projection =
-    as::reverse_z(as::normalize_unit_range(as::perspective_gl_rh(
+    as::reverse_z(as::normalize_unit_range(as::perspective_opengl_rh(
       as::radians(60.0f), float(width) / float(height), 5.0f, 100.0f)));
 
+  auto prev = std::chrono::system_clock::now();
   for (bool quit = false; !quit;) {
     for (SDL_Event current_event; SDL_PollEvent(&current_event) != 0;) {
       if (current_event.type == SDL_QUIT) {
         quit = true;
         break;
       }
+      camera_system.handleEvents(asci_sdl::sdlToInput(&current_event));
       if (current_event.type == SDL_KEYDOWN) {
         const auto* keyboard_event = (SDL_KeyboardEvent*)&current_event;
         if (keyboard_event->keysym.scancode == SDL_SCANCODE_R) {
@@ -309,14 +323,19 @@ int main(int argc, char** argv)
             g_render_mode = render_mode_e::depth;
           }
         }
-        if (keyboard_event->keysym.scancode == SDL_SCANCODE_S) {
-          camera.pivot += as::vec3::axis_z(0.1f);
-        }
-        if (keyboard_event->keysym.scancode == SDL_SCANCODE_W) {
-          camera.pivot -= as::vec3::axis_z(0.1f);
-        }
       }
     }
+
+    auto now = std::chrono::system_clock::now();
+    auto delta = now - prev;
+    prev = now;
+
+    const float delta_time =
+      std::chrono::duration_cast<fp_seconds>(delta).count();
+
+    target_camera = camera_system.stepCamera(target_camera, delta_time);
+    camera = asci::smoothCamera(
+      camera, target_camera, asci::SmoothProps{}, delta_time);
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
