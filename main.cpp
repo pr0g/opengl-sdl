@@ -91,7 +91,7 @@ enum class render_mode_e
   depth
 };
 
-render_mode_e g_render_mode = render_mode_e::depth;
+render_mode_e g_render_mode = render_mode_e::normal;
 
 namespace asc
 {
