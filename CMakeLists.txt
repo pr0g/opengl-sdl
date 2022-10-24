@@ -23,12 +23,12 @@ FetchContent_MakeAvailable(glad as as-camera-input-sdl)
 
 list(APPEND CMAKE_MODULE_PATH ${glad_SOURCE_DIR})
 
-glad_add_library(glad_gl_core_41 REPRODUCIBLE API gl:core=4.1)
+glad_add_library(glad_gl_core_46 REPRODUCIBLE API gl:core=4.6)
 
 add_executable(${PROJECT_NAME})
 target_sources(${PROJECT_NAME} PRIVATE main.cpp)
 target_link_libraries(
-  ${PROJECT_NAME} PRIVATE SDL2::SDL2 SDL2::SDL2main glad_gl_core_41 as
+  ${PROJECT_NAME} PRIVATE SDL2::SDL2 SDL2::SDL2main glad_gl_core_46 as
                           as-camera-input-sdl)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_compile_definitions(
