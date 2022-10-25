@@ -122,8 +122,15 @@ enum class depth_mode_e
   reverse
 };
 
+enum class layout_mode_e
+{
+  near,
+  fighting
+};
+
 render_mode_e g_render_mode = render_mode_e::depth;
 depth_mode_e g_depth_mode = depth_mode_e::normal;
+layout_mode_e g_layout_mode = layout_mode_e::near;
 
 namespace asc
 {
@@ -341,6 +348,7 @@ int main(int argc, char** argv)
   float near = 5.0f;
   float far = 100.0f;
 
+  layout_mode_e prev_layout_mode = g_layout_mode;
   auto prev = std::chrono::system_clock::now();
   for (bool quit = false; !quit;) {
     for (SDL_Event current_event; SDL_PollEvent(&current_event) != 0;) {
@@ -377,6 +385,13 @@ int main(int argc, char** argv)
             far += 10.0f;
           } else {
             far -= 10.0f;
+          }
+        }
+        if (keyboard_event->keysym.scancode == SDL_SCANCODE_L) {
+          if (g_layout_mode == layout_mode_e::fighting) {
+            g_layout_mode = layout_mode_e::near;
+          } else {
+            g_layout_mode = layout_mode_e::fighting;
           }
         }
       }
@@ -416,6 +431,17 @@ int main(int argc, char** argv)
     const as::mat4 reverse_z_perspective_projection =
       as::reverse_z(as::normalize_unit_range(perspective_projection));
 
+    if (g_layout_mode != prev_layout_mode) {
+      if (g_layout_mode == layout_mode_e::fighting) {
+        near = 0.01f;
+        far = 10000.0f;
+      } else if (g_layout_mode == layout_mode_e::near) {
+        near = 5.0f;
+        far = 100.0f;
+      }
+      prev_layout_mode = g_layout_mode;
+    }
+
     const as::mat4 view_projection = [camera, perspective_projection,
                                       reverse_z_perspective_projection] {
       const as::mat4 view = as::mat4_from_affine(camera.view());
@@ -432,18 +458,48 @@ int main(int argc, char** argv)
     const uint32_t color_loc =
       glGetUniformLocation(main_shader_program, "color");
 
-    draw_quad(
-      view_projection, as::mat4_from_vec3(as::vec3(-0.25f, 0.25f, -1.0f)),
-      as::vec4(1.0f, 0.5f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
-    draw_quad(
-      view_projection, as::mat4_from_vec3(as::vec3(0.25f, -0.25f, -3.0f)),
-      as::vec4(1.0f, 0.0f, 0.0f, 1.0f), mvp_loc, color_loc, vao);
-    draw_quad(
-      view_projection, as::mat4_from_vec3(as::vec3(-0.25f, 5.5f, -20.0f)),
-      as::vec4(0.1f, 0.2f, 0.6f, 1.0f), mvp_loc, color_loc, vao);
-    draw_quad(
-      view_projection, as::mat4_from_vec3(as::vec3(-30.0f, 0.0f, -80.0f)),
-      as::vec4(0.1f, 0.8f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
+    switch (g_layout_mode) {
+      case layout_mode_e::fighting: {
+        draw_quad(
+          view_projection,
+          as::mat4_from_mat3_vec3(
+            as::mat3_scale(100.0f, 100.0f, 1.0),
+            as::vec3(-10.0f, 25.0f, -500.0002f)),
+          as::vec4(1.0f, 0.5f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
+        draw_quad(
+          view_projection,
+          as::mat4_from_mat3_vec3(
+            as::mat3_scale(100.0f, 100.0f, 1.0),
+            as::vec3(10.0f, -25.0f, -499.999f)),
+          as::vec4(1.0f, 0.0f, 0.0f, 1.0f), mvp_loc, color_loc, vao);
+        draw_quad(
+          view_projection,
+          as::mat4_from_mat3_vec3(
+            as::mat3_scale(100.0f, 100.0f, 1.0),
+            as::vec3(-10.0f, 0.0f, -500.0f)),
+          as::vec4(0.1f, 0.2f, 0.6f, 1.0f), mvp_loc, color_loc, vao);
+        draw_quad(
+          view_projection,
+          as::mat4_from_mat3_vec3(
+            as::mat3_scale(100.0f, 100.0f, 1.0),
+            as::vec3(10.0f, 0.0f, -500.001f)),
+          as::vec4(0.1f, 0.8f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
+      } break;
+      case layout_mode_e::near: {
+        draw_quad(
+          view_projection, as::mat4_from_vec3(as::vec3(-0.25f, 0.25f, -1.0f)),
+          as::vec4(1.0f, 0.5f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
+        draw_quad(
+          view_projection, as::mat4_from_vec3(as::vec3(0.25f, -0.25f, -3.0f)),
+          as::vec4(1.0f, 0.0f, 0.0f, 1.0f), mvp_loc, color_loc, vao);
+        draw_quad(
+          view_projection, as::mat4_from_vec3(as::vec3(-0.25f, 5.5f, -20.0f)),
+          as::vec4(0.1f, 0.2f, 0.6f, 1.0f), mvp_loc, color_loc, vao);
+        draw_quad(
+          view_projection, as::mat4_from_vec3(as::vec3(-30.0f, 0.0f, -80.0f)),
+          as::vec4(0.1f, 0.8f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
+      } break;
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
