@@ -1,15 +1,16 @@
-#include <cstdint>
-#include <iostream>
-
 #include <SDL.h>
 #include <glad/gl.h>
 
 #include <SDL_opengl.h>
-
 #include <as-camera-input-sdl/as-camera-input-sdl.hpp>
 #include <as/as-view.hpp>
 
+#include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imgui_impl_sdl.h"
+
 #include <chrono>
+#include <cstdint>
+#include <iostream>
 
 const char* const g_vertex_shader_source =
   R"(#version 330 core
@@ -225,6 +226,9 @@ int main(int argc, char** argv)
   }
 
   const SDL_GLContext context = SDL_GL_CreateContext(window);
+  SDL_GL_MakeCurrent(window, context);
+  SDL_GL_SetSwapInterval(1); // enable vsync
+
   const int version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
   if (version == 0) {
     printf("Failed to initialize OpenGL context\n");
@@ -348,10 +352,17 @@ int main(int argc, char** argv)
   float near = 5.0f;
   float far = 100.0f;
 
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO();
+
+  ImGui_ImplSDL2_InitForOpenGL(window, context);
+  ImGui_ImplOpenGL3_Init();
+
   layout_mode_e prev_layout_mode = g_layout_mode;
   auto prev = std::chrono::system_clock::now();
   for (bool quit = false; !quit;) {
     for (SDL_Event current_event; SDL_PollEvent(&current_event) != 0;) {
+      ImGui_ImplSDL2_ProcessEvent(&current_event);
       if (current_event.type == SDL_QUIT) {
         quit = true;
         break;
@@ -540,6 +551,17 @@ int main(int argc, char** argv)
 
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
+    glUseProgram(main_shader_program);
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::ShowDemoWindow(); // your drawing here
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
     SDL_GL_SwapWindow(window);
   }
 
@@ -555,6 +577,10 @@ int main(int argc, char** argv)
   glDeleteTextures(1, &texture_colorbuffer);
   glDeleteTextures(1, &texture_depth_stencil_buffer);
   glDeleteFramebuffers(1, &framebuffer);
+
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplSDL2_Shutdown();
+  ImGui::DestroyContext();
 
   SDL_GL_DeleteContext(context);
   SDL_DestroyWindow(window);

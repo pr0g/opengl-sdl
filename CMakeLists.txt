@@ -18,18 +18,25 @@ FetchContent_Declare(
   as-camera-input-sdl
   GIT_REPOSITORY https://github.com/pr0g/as-camera-input-sdl.git
   GIT_TAG a2c53f7ef12cea081b632d559477f1549055a080)
+FetchContent_Declare(
+  imgui.cmake
+  GIT_REPOSITORY https://github.com/pr0g/imgui.cmake.git
+  GIT_TAG e74e32c2673e7e5cf559d63292a74e1df5725f02)
 
-FetchContent_MakeAvailable(glad as as-camera-input-sdl)
+FetchContent_MakeAvailable(glad as as-camera-input-sdl imgui.cmake)
 
 list(APPEND CMAKE_MODULE_PATH ${glad_SOURCE_DIR})
 
 glad_add_library(glad_gl_core_46 REPRODUCIBLE API gl:core=4.6)
 
 add_executable(${PROJECT_NAME})
-target_sources(${PROJECT_NAME} PRIVATE main.cpp)
+target_sources(${PROJECT_NAME} PRIVATE main.cpp imgui/imgui_impl_opengl3.cpp
+                                       imgui/imgui_impl_sdl.cpp)
+target_include_directories(${PROJECT_NAME}
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 target_link_libraries(
   ${PROJECT_NAME} PRIVATE SDL2::SDL2 SDL2::SDL2main glad_gl_core_46 as
-                          as-camera-input-sdl)
+                          as-camera-input-sdl imgui.cmake)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_compile_definitions(
   ${PROJECT_NAME}
