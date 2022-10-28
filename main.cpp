@@ -129,8 +129,8 @@ enum class layout_mode_e
   fighting
 };
 
-render_mode_e g_render_mode = render_mode_e::depth;
 depth_mode_e g_depth_mode = depth_mode_e::normal;
+render_mode_e g_render_mode = render_mode_e::depth;
 layout_mode_e g_layout_mode = layout_mode_e::near;
 
 namespace asc
@@ -368,44 +368,6 @@ int main(int argc, char** argv)
         break;
       }
       camera_system.handleEvents(asci_sdl::sdlToInput(&current_event));
-      if (current_event.type == SDL_KEYDOWN) {
-        const auto* keyboard_event = (SDL_KeyboardEvent*)&current_event;
-        if (keyboard_event->keysym.scancode == SDL_SCANCODE_R) {
-          if (g_render_mode == render_mode_e::depth) {
-            g_render_mode = render_mode_e::color;
-          } else {
-            g_render_mode = render_mode_e::depth;
-          }
-        }
-        if (keyboard_event->keysym.scancode == SDL_SCANCODE_P) {
-          if (g_depth_mode == depth_mode_e::normal) {
-            g_depth_mode = depth_mode_e::reverse;
-          } else {
-            g_depth_mode = depth_mode_e::normal;
-          }
-        }
-        if (keyboard_event->keysym.scancode == SDL_SCANCODE_N) {
-          if (keyboard_event->keysym.mod != 0) {
-            near += 1.0f;
-          } else {
-            near -= 1.0f;
-          }
-        }
-        if (keyboard_event->keysym.scancode == SDL_SCANCODE_F) {
-          if (keyboard_event->keysym.mod != 0) {
-            far += 10.0f;
-          } else {
-            far -= 10.0f;
-          }
-        }
-        if (keyboard_event->keysym.scancode == SDL_SCANCODE_L) {
-          if (g_layout_mode == layout_mode_e::fighting) {
-            g_layout_mode = layout_mode_e::near;
-          } else {
-            g_layout_mode = layout_mode_e::fighting;
-          }
-        }
-      }
     }
 
     auto now = std::chrono::system_clock::now();
@@ -557,7 +519,35 @@ int main(int argc, char** argv)
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::ShowDemoWindow(); // your drawing here
+    {
+      int depth_mode_index = static_cast<int>(g_depth_mode);
+      const char* depth_mode_names[] = {"Normal", "Reverse"};
+      ImGui::Combo(
+        "Depth Mode", &depth_mode_index, depth_mode_names,
+        std::size(depth_mode_names));
+      g_depth_mode = static_cast<depth_mode_e>(depth_mode_index);
+    }
+
+    {
+      int render_mode_index = static_cast<int>(g_render_mode);
+      const char* render_mode_names[] = {"Color", "Depth"};
+      ImGui::Combo(
+        "Render Mode", &render_mode_index, render_mode_names,
+        std::size(render_mode_names));
+      g_render_mode = static_cast<render_mode_e>(render_mode_index);
+    }
+
+    {
+      int layout_mode_index = static_cast<int>(g_layout_mode);
+      const char* layout_mode_names[] = {"Near", "Fighting"};
+      ImGui::Combo(
+        "Layout Mode", &layout_mode_index, layout_mode_names,
+        std::size(layout_mode_names));
+      g_layout_mode = static_cast<layout_mode_e>(layout_mode_index);
+    }
+
+    ImGui::SliderFloat("Near Plane", &near, 0.01f, 49.9f);
+    ImGui::SliderFloat("Far Plane", &far, 50.0f, 10000.0f);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
