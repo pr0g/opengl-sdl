@@ -353,7 +353,6 @@ int main(int argc, char** argv)
   float far = 100.0f;
 
   ImGui::CreateContext();
-  ImGuiIO& io = ImGui::GetIO();
 
   ImGui_ImplSDL2_InitForOpenGL(window, context);
   ImGui_ImplOpenGL3_Init();
@@ -437,13 +436,13 @@ int main(int argc, char** argv)
           view_projection,
           as::mat4_from_mat3_vec3(
             as::mat3_scale(100.0f, 100.0f, 1.0),
-            as::vec3(-10.0f, 25.0f, -500.0002f)),
+            as::vec3(-10.0f, 25.0f, -500.02f)),
           as::vec4(1.0f, 0.5f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
         draw_quad(
           view_projection,
           as::mat4_from_mat3_vec3(
             as::mat3_scale(100.0f, 100.0f, 1.0),
-            as::vec3(10.0f, -25.0f, -499.999f)),
+            as::vec3(10.0f, -25.0f, -499.98f)),
           as::vec4(1.0f, 0.0f, 0.0f, 1.0f), mvp_loc, color_loc, vao);
         draw_quad(
           view_projection,
@@ -455,7 +454,7 @@ int main(int argc, char** argv)
           view_projection,
           as::mat4_from_mat3_vec3(
             as::mat3_scale(100.0f, 100.0f, 1.0),
-            as::vec3(10.0f, 0.0f, -500.001f)),
+            as::vec3(10.0f, 0.0f, -500.01f)),
           as::vec4(0.1f, 0.8f, 0.2f, 1.0f), mvp_loc, color_loc, vao);
       } break;
       case layout_mode_e::near: {
