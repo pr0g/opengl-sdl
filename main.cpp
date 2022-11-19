@@ -56,7 +56,7 @@ void main()
   FragColor = texture(screenTexture, TexCoords);
 })";
 
-const char* const g_reverse_z_screen_depth_fragment_shader_source =
+const char* const g_screen_depth_fragment_shader_source =
   R"(#version 330 core
 out vec4 FragColor;
 
@@ -67,44 +67,16 @@ uniform float near;
 uniform float far;
 
 // return depth value in range near to far
-float LinearizeDepth(in vec2 uv)
+float linearize_depth(in vec2 uv)
 {
   float depth = texture(screenTexture, uv).x;
   // inverse of perspective projection matrix transformation
-  return near * far / (far - depth * (far - near));
+  return (far * near) / ((depth * (near - far)) + far);
 }
 
 void main()
 {
-  float c = LinearizeDepth(TexCoords);
-  vec3 range = vec3(c - near)/(far - near); // convert to [0,1]
-  FragColor = vec4(range, 1.0);
-})";
-
-const char* const g_normal_screen_depth_fragment_shader_source =
-  R"(#version 330 core
-out vec4 FragColor;
-
-in vec2 TexCoords;
-
-uniform sampler2D screenTexture;
-uniform float near;
-uniform float far;
-
-// return depth value in range near to far
-// ref: https://learnopengl.com/Advanced-OpenGL/Depth-testing
-float LinearizeDepth(in vec2 uv)
-{
-  float depth = texture(screenTexture, uv).x;
-  // map from [0,1] to [-1,1]
-  float z_n = 2.0 * depth - 1.0;
-  // inverse of perspective projection matrix transformation
-  return 2.0 * near * far / (far + near - z_n * (far - near));
-}
-
-void main()
-{
-  float c = LinearizeDepth(TexCoords);
+  float c = linearize_depth(TexCoords);
   vec3 range = vec3(c - near)/(far - near); // convert to [0,1]
   FragColor = vec4(range, 1.0);
 })";
@@ -239,16 +211,16 @@ int main(int argc, char** argv)
     "OpenGL version %d.%d\n", GLAD_VERSION_MAJOR(version),
     GLAD_VERSION_MINOR(version));
 
+  // ensure OpenGL uses 0 to 1 for NDC instead of -1 to 1
+  glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+
   const uint32_t main_shader_program =
     create_shader(g_vertex_shader_source, g_fragment_shader_source);
   const uint32_t screen_shader_program = create_shader(
     g_screen_vertex_shader_source, g_screen_fragment_shader_source);
-  const uint32_t normal_depth_screen_shader_program = create_shader(
+  const uint32_t depth_screen_shader_program = create_shader(
     g_screen_vertex_shader_source,
-    g_normal_screen_depth_fragment_shader_source);
-  const uint32_t reverse_z_depth_screen_shader_program = create_shader(
-    g_screen_vertex_shader_source,
-    g_reverse_z_screen_depth_fragment_shader_source);
+    g_screen_depth_fragment_shader_source);
 
   float vertices[] = {
     0.5f,  0.5f,  0.0f, // top right
@@ -384,11 +356,9 @@ int main(int argc, char** argv)
 
     glEnable(GL_DEPTH_TEST);
     if (g_depth_mode == depth_mode_e::reverse) {
-      glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
       glClearDepth(0.0f);
       glDepthFunc(GL_GREATER);
     } else if (g_depth_mode == depth_mode_e::normal) {
-      glClipControl(GL_LOWER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
       glClearDepth(1.0f);
       glDepthFunc(GL_LESS);
     }
@@ -398,10 +368,11 @@ int main(int argc, char** argv)
 
     glUseProgram(main_shader_program);
 
-    const as::mat4 perspective_projection = as::perspective_opengl_rh(
-      as::radians(60.0f), float(width) / float(height), near, far);
+    const as::mat4 perspective_projection =
+      as::normalize_unit_range(as::perspective_opengl_rh(
+        as::radians(60.0f), float(width) / float(height), near, far));
     const as::mat4 reverse_z_perspective_projection =
-      as::reverse_z(as::normalize_unit_range(perspective_projection));
+      as::reverse_z(perspective_projection);
 
     if (g_layout_mode != prev_layout_mode) {
       if (g_layout_mode == layout_mode_e::fighting) {
@@ -483,22 +454,12 @@ int main(int argc, char** argv)
     if (g_render_mode == render_mode_e::color) {
       glUseProgram(screen_shader_program);
     } else {
-      const int depth_shader_program = [reverse_z_depth_screen_shader_program,
-                                        normal_depth_screen_shader_program] {
-        if (g_depth_mode == depth_mode_e::normal) {
-          return normal_depth_screen_shader_program;
-        }
-        if (g_depth_mode == depth_mode_e::reverse) {
-          return reverse_z_depth_screen_shader_program;
-        }
-        return uint32_t(0);
-      }();
-      glUseProgram(depth_shader_program);
+      glUseProgram(depth_screen_shader_program);
       const uint32_t near_loc =
-        glGetUniformLocation(depth_shader_program, "near");
+        glGetUniformLocation(depth_screen_shader_program, "near");
       glUniform1f(near_loc, near);
       const uint32_t far_loc =
-        glGetUniformLocation(depth_shader_program, "far");
+        glGetUniformLocation(depth_screen_shader_program, "far");
       glUniform1f(far_loc, far);
     }
 
@@ -561,8 +522,7 @@ int main(int argc, char** argv)
   glDeleteBuffers(1, &ebo);
   glDeleteProgram(main_shader_program);
   glDeleteProgram(screen_shader_program);
-  glDeleteProgram(reverse_z_depth_screen_shader_program);
-  glDeleteProgram(normal_depth_screen_shader_program);
+  glDeleteProgram(depth_screen_shader_program);
   glDeleteTextures(1, &texture_colorbuffer);
   glDeleteTextures(1, &texture_depth_stencil_buffer);
   glDeleteFramebuffers(1, &framebuffer);
