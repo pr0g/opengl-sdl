@@ -102,7 +102,7 @@ enum class layout_mode_e
 };
 
 depth_mode_e g_depth_mode = depth_mode_e::normal;
-render_mode_e g_render_mode = render_mode_e::depth;
+render_mode_e g_render_mode = render_mode_e::color;
 layout_mode_e g_layout_mode = layout_mode_e::near;
 
 namespace asc
