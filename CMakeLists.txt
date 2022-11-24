@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.15)
 project(opengl-sdl)
 
+option(SUPERBUILD "Perform a superbuild (or not)" OFF)
+
+if(SUPERBUILD)
+  include(third-party/sdl/CMakeLists.txt)
+  include(superbuild.cmake)
+  return()
+endif()
+
 find_package(SDL2 REQUIRED CONFIG)
 
 include(FetchContent)

@@ -1,0 +1,11 @@
+ExternalProject_Add(
+  ${PROJECT_NAME}-superbuild
+  DEPENDS SDL2
+  SOURCE_DIR ${PROJECT_SOURCE_DIR}
+  BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}
+  INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}
+  CMAKE_ARGS
+    -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_SOURCE_DIR}/third-party/sdl/build
+    -DSUPERBUILD=OFF ${build_type_arg}
+  BUILD_COMMAND cmake --build <BINARY_DIR> ${build_config_arg}
+  INSTALL_COMMAND "")
