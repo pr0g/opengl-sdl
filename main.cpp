@@ -219,8 +219,7 @@ int main(int argc, char** argv)
   const uint32_t screen_shader_program = create_shader(
     g_screen_vertex_shader_source, g_screen_fragment_shader_source);
   const uint32_t depth_screen_shader_program = create_shader(
-    g_screen_vertex_shader_source,
-    g_screen_depth_fragment_shader_source);
+    g_screen_vertex_shader_source, g_screen_depth_fragment_shader_source);
 
   float vertices[] = {
     0.5f,  0.5f,  0.0f, // top right
