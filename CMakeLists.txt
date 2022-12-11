@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(opengl-sdl LANGUAGES CXX)
+project(opengl-sdl LANGUAGES C CXX)
 
 option(SUPERBUILD "Perform a superbuild (or not)" OFF)
 
