@@ -2,6 +2,9 @@
 
 Simple OpenGL test scene, initially experimenting with reverse z projection.
 
+<img src="https://github.com/pr0g/opengl-sdl/assets/1136625/0703977f-a51f-4ae7-8eb4-0f9ce3ec5dbe" alt="no-reverse" width="400"/>
+<img src="https://github.com/pr0g/opengl-sdl/assets/1136625/31ff5ed6-eae2-459f-9d75-f7c57eea62a0" alt="reverse" width="390"/>
+
 ## Prerequisites
 
 You'll need the normal stuff like CMake, a compiler (e.g. Visual Studio/MSVC, GCC, Clang etc...) to really get started, below are the additional things you might bump into.
